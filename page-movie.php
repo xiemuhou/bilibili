@@ -163,7 +163,6 @@ echo "<div class=\"page-header\"><h1>我的追剧 <small>当前已追" . $sum['t
 <script type="text/javascript">
     window.jQuery || document.write('<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js"><\/script>')
 </script>
-<script src="https://cdn.jsdelivr.net/npm/lazyload@2.0.0-rc.2/lazyload.js"></script>
 <script type="text/javascript">
     $(document).ready(function() {
         var pagenum = 0;
@@ -174,6 +173,50 @@ echo "<div class=\"page-header\"><h1>我的追剧 <small>当前已追" . $sum['t
             console.log("第 " + pagenum + " 页");
         });
     });
+
+    function loadCoverImage(image) {
+        var coverUrl = image.getAttribute("data-cover-src");
+        if (!coverUrl) {
+            return;
+        }
+
+        image.onload = function() {
+            image.onload = null;
+            image.onerror = null;
+            image.removeAttribute("data-cover-src");
+        };
+        image.onerror = function() {
+            image.onload = null;
+            image.onerror = null;
+            image.src = "/json/images/loading.svg";
+        };
+        image.src = coverUrl;
+    }
+
+    function initCoverLazyLoad(containerSelector) {
+        var images = document.querySelectorAll(containerSelector + " img[data-cover-src]");
+
+        if (!("IntersectionObserver" in window)) {
+            images.forEach(loadCoverImage);
+            return;
+        }
+
+        var observer = new IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+                if (entry.isIntersecting) {
+                    observer.unobserve(entry.target);
+                    loadCoverImage(entry.target);
+                }
+            });
+        }, {
+            rootMargin: "200px 0px",
+            threshold: 0
+        });
+
+        images.forEach(function(image) {
+            observer.observe(image);
+        });
+    }
 
     function GetMovieData(limit, page) {
         $.ajax({
@@ -198,10 +241,10 @@ echo "<div class=\"page-header\"><h1>我的追剧 <small>当前已追" . $sum['t
                     $("div#next").text("真的没有更多了哦~");
                 }
                 for (i = 0; i < data.data.length; i++) {
-                    $("#bilibiliMovie").append("<div class=\"bangumi-item col-md-4 col-lg-3 col-sm-6\"><a class=\"no-line bangumi-link\" href=\"https://www.bilibili.com/bangumi/play/ss" + data.data[i].id + "/ \" target=\"_blank\"><div class=\"bangumi-banner\"><img class=\"lazy\" src=\"/json/images/loading.svg\" data-src=\"" + data.data[i].image_url + "\"><div class=\"bangumi-des\"><p>" + data.data[i].evaluate + "</p></div></div><div class=\"bangumi-content\"><h3 class=\"bangumi-title\">" + data.data[i].title + "</h3></div></a></div>");
+                    $("#bilibiliMovie").append("<div class=\"bangumi-item col-md-4 col-lg-3 col-sm-6\"><a class=\"no-line bangumi-link\" href=\"https://www.bilibili.com/bangumi/play/ss" + data.data[i].id + "/ \" target=\"_blank\"><div class=\"bangumi-banner\"><img referrerpolicy=\"no-referrer\" src=\"/json/images/loading.svg\" data-cover-src=\"" + data.data[i].image_url + "\" alt=\"\"><div class=\"bangumi-des\"><p>" + data.data[i].evaluate + "</p></div></div><div class=\"bangumi-content\"><h3 class=\"bangumi-title\">" + data.data[i].title + "</h3></div></a></div>");
                     // console.log(data); // 查看AJAX获取的数据
                 }
-                $("img.lazy").lazyload(); // 图片懒加载
+                initCoverLazyLoad("#bilibiliMovie");
             },
             error: function(data) {
                 alert(data.result);
